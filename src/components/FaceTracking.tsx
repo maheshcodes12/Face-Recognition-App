@@ -4,12 +4,12 @@ import React, { useEffect, useRef, useState } from "react";
 import * as faceapi from "face-api.js";
 
 const FaceTracking = () => {
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const recordedChunks = useRef([]);
-  const faceTrackingIntervalRef = useRef(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunks = useRef<Blob[]>([]);
+  const faceTrackingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     // Load models
@@ -32,7 +32,9 @@ const FaceTracking = () => {
       navigator.mediaDevices
         .getUserMedia({ video: true })
         .then((stream) => {
-          videoRef.current.srcObject = stream;
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream;
+          }
         })
         .catch((err) => console.error("Error accessing webcam:", err));
     };
@@ -44,7 +46,12 @@ const FaceTracking = () => {
     const detectFaces = async () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
+
+      if (!video || !canvas) return;
+
       const context = canvas.getContext("2d");
+
+      if (!context) return;
 
       // Set up canvas to match video dimensions
       const displaySize = {
@@ -77,7 +84,9 @@ const FaceTracking = () => {
 
     // Cleanup interval when component unmounts
     return () => {
-      clearInterval(faceTrackingIntervalRef.current);
+      if (faceTrackingIntervalRef.current) {
+        clearInterval(faceTrackingIntervalRef.current);
+      }
     };
   }, []);
 
@@ -90,13 +99,15 @@ const FaceTracking = () => {
   };
 
   const startRecording = () => {
-    const videoStream = videoRef.current.srcObject;
+    const videoStream = videoRef.current?.srcObject as MediaStream;
     const canvas = canvasRef.current;
+
+    if (!videoStream || !canvas) return;
 
     // Set up canvas dimensions to match the video stream
     const videoTrack = videoStream.getVideoTracks()[0];
-    const videoWidth = videoTrack.getSettings().width;
-    const videoHeight = videoTrack.getSettings().height;
+    const videoWidth = videoTrack.getSettings().width ?? 640; // Fallback value (e.g., 640px)
+    const videoHeight = videoTrack.getSettings().height ?? 480; // Fallback value (e.g., 480px)
 
     canvas.width = videoWidth;
     canvas.height = videoHeight;
@@ -146,7 +157,7 @@ const FaceTracking = () => {
   };
 
   const stopRecording = () => {
-    mediaRecorderRef.current.stop();
+    mediaRecorderRef.current?.stop();
     setIsRecording(false);
   };
 
